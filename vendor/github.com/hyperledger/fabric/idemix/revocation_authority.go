@@ -11,6 +11,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sm/sm2"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
@@ -38,7 +39,7 @@ func GenerateLongTermRevocationKey() (*ecdsa.PrivateKey, error) {
 // Users can use the CRI to prove that they are not revoked.
 // Note that when not using revocation (i.e., alg = ALG_NO_REVOCATION), the entered unrevokedHandles are not used,
 // and the resulting CRI can be used by any signer.
-func CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int, alg RevocationAlgorithm, rng *amcl.RAND) (*CredentialRevocationInformation, error) {
+func CreateCRI(key interface{}, unrevokedHandles []*FP256BN.BIG, epoch int, alg RevocationAlgorithm, rng *amcl.RAND) (*CredentialRevocationInformation, error) {
 	if key == nil || rng == nil {
 		return nil, errors.Errorf("CreateCRI received nil input")
 	}
@@ -63,7 +64,12 @@ func CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int
 
 	digest := sha256.Sum256(bytesToSign)
 
-	cri.EpochPkSig, err = key.Sign(rand.Reader, digest[:], nil)
+	switch k := key.(type) {
+	case *ecdsa.PrivateKey:
+		cri.EpochPkSig, err = k.Sign(rand.Reader, digest[:], nil)
+	case *sm2.PrivateKey:
+		cri.EpochPkSig, err = k.Sign(rand.Reader, digest[:], nil)
+	}
 	if err != nil {
 		return nil, err
 	}

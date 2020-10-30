@@ -17,7 +17,9 @@ limitations under the License.
 package lib
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sm/sm2"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -196,7 +198,13 @@ func GenerateECDSATestCert() error {
 		return err
 	}
 
-	publicKey := &privateKey.PublicKey
+	var publicKey interface{}
+	switch k := privateKey.(type) {
+	case *ecdsa.PrivateKey:
+		publicKey = &k.PublicKey
+	case *sm2.PrivateKey:
+		publicKey = &k.PublicKey
+	}
 
 	var parent = template
 	cert, err := x509.CreateCertificate(rand.Reader, template, parent, publicKey, privateKey)

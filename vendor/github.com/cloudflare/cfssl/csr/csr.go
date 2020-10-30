@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sm/sm2"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -15,6 +16,7 @@ import (
 	"net"
 	"net/mail"
 	"strings"
+	"unsafe"
 
 	cferr "github.com/cloudflare/cfssl/errors"
 	"github.com/cloudflare/cfssl/helpers"
@@ -92,6 +94,11 @@ func (kr *BasicKeyRequest) Generate() (crypto.PrivateKey, error) {
 			return nil, errors.New("invalid curve")
 		}
 		return ecdsa.GenerateKey(curve, rand.Reader)
+	case "sm2":
+		if kr.Size() == 256 {
+			return sm2.GenerateKey()
+		}
+		return nil, errors.New("invalid curve: size of sm2 must be 256")
 	default:
 		return nil, errors.New("invalid algorithm")
 	}
@@ -123,6 +130,8 @@ func (kr *BasicKeyRequest) SigAlgo() x509.SignatureAlgorithm {
 		default:
 			return x509.ECDSAWithSHA1
 		}
+	case "sm2":
+		return x509.SM2WithSM3
 	default:
 		return x509.UnknownSignatureAlgorithm
 	}
@@ -212,6 +221,17 @@ func ParseRequest(req *CertificateRequest) (csr, key []byte, err error) {
 		key = pem.EncodeToMemory(&block)
 	case *ecdsa.PrivateKey:
 		key, err = x509.MarshalECPrivateKey(priv)
+		if err != nil {
+			err = cferr.Wrap(cferr.PrivateKeyError, cferr.Unknown, err)
+			return
+		}
+		block := pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: key,
+		}
+		key = pem.EncodeToMemory(&block)
+	case *sm2.PrivateKey:
+		key, err = x509.MarshalECPrivateKey((*ecdsa.PrivateKey)(unsafe.Pointer(priv)))
 		if err != nil {
 			err = cferr.Wrap(cferr.PrivateKeyError, cferr.Unknown, err)
 			return

@@ -9,6 +9,7 @@ package idemix
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/sm/sm2"
 	"fmt"
 
 	"github.com/cloudflare/cfssl/log"
@@ -49,7 +50,7 @@ type RevocationAuthority interface {
 	// Epoch returns epoch value of the latest CRI
 	Epoch() (int, error)
 	// PublicKey returns revocation authority's public key
-	PublicKey() *ecdsa.PublicKey
+	PublicKey() interface{}
 }
 
 // RevocationAuthorityInfo is the revocation authority information record that is
@@ -195,8 +196,14 @@ func (ra *revocationAuthority) Epoch() (int, error) {
 }
 
 // PublicKey returns revocation authority's public key
-func (ra *revocationAuthority) PublicKey() *ecdsa.PublicKey {
-	return &ra.key.GetKey().PublicKey
+func (ra *revocationAuthority) PublicKey() interface{} {
+	switch k := ra.key.GetKey().(type) {
+	case *ecdsa.PrivateKey:
+		return &k.PublicKey
+	case *sm2.PrivateKey:
+		return &k.PublicKey
+	}
+	return nil
 }
 
 func (ra *revocationAuthority) getUnRevokedHandles(info *RevocationAuthorityInfo, revokedCreds []CredRecord) []*fp256bn.BIG {

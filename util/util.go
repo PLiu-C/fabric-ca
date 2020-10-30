@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/sm/sm2"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -337,8 +338,8 @@ func DecodeToken(token string) (*x509.Certificate, string, string, error) {
 	return x509Cert, b64cert, parts[1], nil
 }
 
-//GetECPrivateKey get *ecdsa.PrivateKey from key pem
-func GetECPrivateKey(raw []byte) (*ecdsa.PrivateKey, error) {
+//GetECPrivateKey get *ecdsa.PrivateKey or *sm2.PrivateKey from key pem
+func GetECPrivateKey(raw []byte) (interface{}, error) {
 	decoded, _ := pem.Decode(raw)
 	if decoded == nil {
 		return nil, errors.New("Failed to decode the PEM-encoded ECDSA key")
@@ -350,8 +351,8 @@ func GetECPrivateKey(raw []byte) (*ecdsa.PrivateKey, error) {
 	key, err2 := x509.ParsePKCS8PrivateKey(decoded.Bytes)
 	if err2 == nil {
 		switch key.(type) {
-		case *ecdsa.PrivateKey:
-			return key.(*ecdsa.PrivateKey), nil
+		case *ecdsa.PrivateKey, *sm2.PrivateKey:
+			return key, nil
 		case *rsa.PrivateKey:
 			return nil, errors.New("Expecting EC private key but found RSA private key")
 		default:

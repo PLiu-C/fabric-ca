@@ -19,7 +19,7 @@ import (
 type Lib interface {
 	NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (ik *idemix.IssuerKey, err error)
 	NewCredential(key *idemix.IssuerKey, m *idemix.CredRequest, attrs []*fp256bn.BIG, rng *amcl.RAND) (cred *idemix.Credential, err error)
-	CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*fp256bn.BIG, epoch int, alg idemix.RevocationAlgorithm, rng *amcl.RAND) (cri *idemix.CredentialRevocationInformation, err error)
+	CreateCRI(key interface{} /* *ecdsa.PrivateKey */, unrevokedHandles []*fp256bn.BIG, epoch int, alg idemix.RevocationAlgorithm, rng *amcl.RAND) (cri *idemix.CredentialRevocationInformation, err error)
 	GenerateLongTermRevocationKey() (pk *ecdsa.PrivateKey, err error)
 	GetRand() (rand *amcl.RAND, err error)
 	RandModOrder(rng *amcl.RAND) (big *fp256bn.BIG, err error)
@@ -69,7 +69,8 @@ func (i *libImpl) NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (ik *ide
 	}()
 	return idemix.NewIssuerKey(AttributeNames, rng)
 }
-func (i *libImpl) CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*fp256bn.BIG, epoch int, alg idemix.RevocationAlgorithm, rng *amcl.RAND) (cri *idemix.CredentialRevocationInformation, err error) {
+func (i *libImpl) CreateCRI(key interface{}, unrevokedHandles []*fp256bn.BIG, epoch int, alg idemix.RevocationAlgorithm, rng *amcl.RAND) (cri *idemix.CredentialRevocationInformation, err error) {
+	// key is either *ecdsa.PrivateKey or *sm2.PrivateKey
 	defer func() {
 		r := recover()
 		if r != nil {

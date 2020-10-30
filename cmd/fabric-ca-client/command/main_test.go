@@ -1036,6 +1036,11 @@ func testEnroll(t *testing.T) {
 		t.Errorf("client enroll -u failed: %s", err)
 	}
 
+	err = RunMain([]string{cmdName, "enroll", "-u", enrollURL, "-M", filepath.Join(filepath.Dir(defYaml), "msp"), "--csr.keyrequest.algo", "sm2", "--csr.keyrequest.size", "256"})
+	if err != nil {
+		t.Errorf("client enroll -u failed: %s", err)
+	}
+
 	testReenroll(t)
 
 	err = RunMain([]string{cmdName, "enroll", "-u", "http://admin2:adminpw2@localhost:7091"})
@@ -1130,6 +1135,8 @@ func TestDifferentKeySizeAlgos(t *testing.T) {
 		errorExpected         bool
 		expectedSignatureAlgo x509.SignatureAlgorithm
 	}{
+		{"sm2", 384, true, x509.SM2WithSM3},
+		{"sm2", 256, false, x509.SM2WithSM3},
 		{"ecdsa", 256, false, x509.ECDSAWithSHA256},
 		{"ecdsa", 384, false, x509.ECDSAWithSHA384},
 		{"ecdsa", 521, true, x509.ECDSAWithSHA512},
