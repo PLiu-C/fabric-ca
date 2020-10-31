@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/sm/sm2"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
@@ -28,6 +29,7 @@ import (
 	"io/ioutil"
 	"strings"
 	_ "time" // for ocspSignerFromConfig
+	"unsafe"
 
 	_ "github.com/cloudflare/cfssl/cli" // for ocspSignerFromConfig
 	"github.com/cloudflare/cfssl/config"
@@ -146,6 +148,13 @@ func getBCCSPKeyOpts(kr csr.KeyRequest, ephemeral bool) (opts bccsp.KeyGenOpts, 
 		default:
 			return nil, errors.Errorf("Invalid ECDSA key size: %d", kr.Size())
 		}
+	case "sm2":
+		switch kr.Size() {
+		case 256:
+			return &bccsp.SM2KeyGenOpts{Temporary: ephemeral}, nil
+		default:
+			return nil, errors.Errorf("Unsupported SM2 key size: %d", kr.Size())
+		}
 	default:
 		return nil, errors.Errorf("Invalid algorithm: %s", kr.Algo())
 	}
@@ -226,15 +235,25 @@ func ImportBCCSPKeyFromPEM(keyFile string, myCSP bccsp.BCCSP, temporary bool) (b
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("Failed parsing private key from %s", keyFile))
 	}
-	switch key.(type) {
+	switch k := key.(type) {
 	case *ecdsa.PrivateKey:
-		priv, err := utils.PrivateKeyToDER(key.(*ecdsa.PrivateKey))
+		priv, err := utils.PrivateKeyToDER(k)
 		if err != nil {
 			return nil, errors.WithMessage(err, fmt.Sprintf("Failed to convert ECDSA private key for '%s'", keyFile))
 		}
 		sk, err := myCSP.KeyImport(priv, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: temporary})
 		if err != nil {
 			return nil, errors.WithMessage(err, fmt.Sprintf("Failed to import ECDSA private key for '%s'", keyFile))
+		}
+		return sk, nil
+	case *sm2.PrivateKey:
+		priv, err := utils.PrivateKeyToDER((*ecdsa.PrivateKey)(unsafe.Pointer(k)))
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("Failed to convert SM2 private key for '%s'", keyFile))
+		}
+		sk, err := myCSP.KeyImport(priv, &bccsp.SM2PrivateKeyImportOpts{Temporary: temporary})
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("Failed to import SM2 private key for '%s'", keyFile))
 		}
 		return sk, nil
 	case *rsa.PrivateKey:

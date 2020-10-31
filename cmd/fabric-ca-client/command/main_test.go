@@ -1135,14 +1135,14 @@ func TestDifferentKeySizeAlgos(t *testing.T) {
 		errorExpected         bool
 		expectedSignatureAlgo x509.SignatureAlgorithm
 	}{
-		{"sm2", 384, true, x509.SM2WithSM3},
-		{"sm2", 256, false, x509.SM2WithSM3},
 		{"ecdsa", 256, false, x509.ECDSAWithSHA256},
 		{"ecdsa", 384, false, x509.ECDSAWithSHA384},
 		{"ecdsa", 521, true, x509.ECDSAWithSHA512},
 		{"rsa", 2048, false, x509.SHA256WithRSA},
 		{"rsa", 3072, false, x509.SHA384WithRSA},
 		{"rsa", 4096, false, x509.SHA512WithRSA},
+		{"sm2", 384, true, x509.SM2WithSM3},
+		{"sm2", 256, false, x509.SM2WithSM3},
 	}
 
 	homeDir := filepath.Join(tdDir, "genCSRDiffKeyReqs")

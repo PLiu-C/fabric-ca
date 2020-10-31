@@ -201,9 +201,9 @@ func GenerateECDSATestCert() error {
 	var publicKey interface{}
 	switch k := privateKey.(type) {
 	case *ecdsa.PrivateKey:
-		publicKey = &k.PublicKey
+		publicKey = &(k.PublicKey)
 	case *sm2.PrivateKey:
-		publicKey = &k.PublicKey
+		publicKey = &(k.PublicKey)
 	}
 
 	var parent = template

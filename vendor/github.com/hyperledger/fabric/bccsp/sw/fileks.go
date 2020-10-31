@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/sm/sm2"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -135,6 +136,8 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		}
 
 		switch key.(type) {
+		case *sm2.PrivateKey:
+			return &sm2PrivateKey{key.(*sm2.PrivateKey)}, nil
 		case *ecdsa.PrivateKey:
 			return &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}, nil
 		case *rsa.PrivateKey:
@@ -150,6 +153,8 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		}
 
 		switch key.(type) {
+		case *sm2.PublicKey:
+			return &sm2PublicKey{key.(*sm2.PublicKey)}, nil
 		case *ecdsa.PublicKey:
 			return &ecdsaPublicKey{key.(*ecdsa.PublicKey)}, nil
 		case *rsa.PublicKey:
@@ -173,6 +178,22 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 		return errors.New("Invalid key. It must be different from nil.")
 	}
 	switch k.(type) {
+	case *sm2PrivateKey:
+		kk := k.(*sm2PrivateKey)
+
+		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
+		if err != nil {
+			return fmt.Errorf("Failed storing sm2 private key [%s]", err)
+		}
+
+	case *sm2PublicKey:
+		kk := k.(*sm2PublicKey)
+
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
+		if err != nil {
+			return fmt.Errorf("Failed storing sm2 public key [%s]", err)
+		}
+
 	case *ecdsaPrivateKey:
 		kk := k.(*ecdsaPrivateKey)
 
@@ -243,6 +264,8 @@ func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err 
 		}
 
 		switch key.(type) {
+		case *sm2.PrivateKey:
+			k = &sm2PrivateKey{key.(*sm2.PrivateKey)}
 		case *ecdsa.PrivateKey:
 			k = &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}
 		case *rsa.PrivateKey:
@@ -398,11 +421,7 @@ func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
 	if missing {
 		logger.Debugf("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
 
-		err := ks.createKeyStore()
-		if err != nil {
-			logger.Errorf("Failed creating KeyStore At [%s]: [%s]", ksPath, err.Error())
-			return nil
-		}
+		return ks.createKeyStore()
 	}
 
 	return nil
@@ -411,11 +430,14 @@ func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
 func (ks *fileBasedKeyStore) createKeyStore() error {
 	// Create keystore directory root if it doesn't exist yet
 	ksPath := ks.path
-	logger.Debugf("Creating KeyStore at [%s]...", ksPath)
+	logger.Debugf("Creating KeyStore at [%s]", ksPath)
 
-	os.MkdirAll(ksPath, 0755)
+	if err := os.MkdirAll(ksPath, 0755); err != nil {
+		logger.Errorf("Failed creating KeyStore at [%s]: [%s]", ksPath, err.Error())
+		return err
+	}
 
-	logger.Debugf("KeyStore created at [%s].", ksPath)
+	logger.Debugf("KeyStore created at [%s]", ksPath)
 	return nil
 }
 
@@ -424,7 +446,7 @@ func (ks *fileBasedKeyStore) openKeyStore() error {
 		return nil
 	}
 	ks.isOpen = true
-	logger.Debugf("KeyStore opened at [%s]...done", ks.path)
+	logger.Debugf("KeyStore opened at [%s]", ks.path)
 
 	return nil
 }
