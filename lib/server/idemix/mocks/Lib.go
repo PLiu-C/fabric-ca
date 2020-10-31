@@ -13,12 +13,12 @@ type Lib struct {
 }
 
 // CreateCRI provides a mock function with given fields: key, unrevokedHandles, epoch, alg, rng
-func (_m *Lib) CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG, epoch int, alg idemix.RevocationAlgorithm, rng *amcl.RAND) (*idemix.CredentialRevocationInformation, error) {
+func (_m *Lib) CreateCRI(key interface{} /**ecdsa.PrivateKey*/, unrevokedHandles []*FP256BN.BIG, epoch int, alg idemix.RevocationAlgorithm, rng *amcl.RAND) (*idemix.CredentialRevocationInformation, error) {
 	ret := _m.Called(key, unrevokedHandles, epoch, alg, rng)
 
 	var r0 *idemix.CredentialRevocationInformation
 	if rf, ok := ret.Get(0).(func(*ecdsa.PrivateKey, []*FP256BN.BIG, int, idemix.RevocationAlgorithm, *amcl.RAND) *idemix.CredentialRevocationInformation); ok {
-		r0 = rf(key, unrevokedHandles, epoch, alg, rng)
+		r0 = rf(key.(*ecdsa.PrivateKey), unrevokedHandles, epoch, alg, rng)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*idemix.CredentialRevocationInformation)
@@ -27,7 +27,7 @@ func (_m *Lib) CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*FP256BN.BIG,
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(*ecdsa.PrivateKey, []*FP256BN.BIG, int, idemix.RevocationAlgorithm, *amcl.RAND) error); ok {
-		r1 = rf(key, unrevokedHandles, epoch, alg, rng)
+		r1 = rf(key.(*ecdsa.PrivateKey), unrevokedHandles, epoch, alg, rng)
 	} else {
 		r1 = ret.Error(1)
 	}
