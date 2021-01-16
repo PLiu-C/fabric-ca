@@ -5,6 +5,7 @@ import (
 	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/sm/sm2"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -162,15 +163,21 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 		} else {
 			return errors.New("certinfo: Expected dsa.PublicKey for type x509.DSA")
 		}
-	case x509.ECDSA:
+	case x509.ECDSA, x509.SM2:
 		buf.WriteString(fmt.Sprintf("ECDSA\n"))
-		if ecdsaKey, ok := pk.(*ecdsa.PublicKey); ok {
+		switch ecdsaKey := pk.(type) {
+		case *ecdsa.PublicKey:
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize))
 			dsaKeyPrinter("X", ecdsaKey.X, buf)
 			dsaKeyPrinter("Y", ecdsaKey.Y, buf)
 			buf.WriteString(fmt.Sprintf("%16sCurve: %s\n", "", ecdsaKey.Params().Name))
-		} else {
-			return errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
+		case *sm2.PublicKey:
+			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize))
+			dsaKeyPrinter("X", ecdsaKey.X, buf)
+			dsaKeyPrinter("Y", ecdsaKey.Y, buf)
+			buf.WriteString(fmt.Sprintf("%16sCurve: %s\n", "", ecdsaKey.Params().Name))
+		default:
+			return errors.New("certinfo: Expected ecdsa.PublicKey or sm2.PublicKey for type x509.DSA")
 		}
 	default:
 		return errors.New("certinfo: Unknown public key type")
